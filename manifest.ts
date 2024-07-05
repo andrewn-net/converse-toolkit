@@ -9,7 +9,7 @@ import { PostConversationDefinition } from "./functions/post_conversation.ts";
  * https://api.slack.com/automation/manifest
  */
 export default Manifest({
-  name: "oldmate-toolkit",
+  name: "Oldmate Toolkit",
   description: "Workflow Steps to generate conversations using AI",
   icon: "assets/oldmate-icon.jpg",
   workflows: [],
