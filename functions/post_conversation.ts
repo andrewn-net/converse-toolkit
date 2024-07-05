@@ -20,7 +20,7 @@ export const PostConversationDefinition = DefineFunction({
         description: "Channel to post the conversation",
       },
       numberOfUsers: {
-        type: Schema.types.string, // Change to string
+        type: Schema.types.string,
         description: "Number of users to mimic",
       },
     },
@@ -50,6 +50,7 @@ export default SlackFunction(
       }
 
       // Debugging: Log the response_text and user_ids
+      console.log("Response Text:", response_text);
       console.log("User IDs:", user_ids);
 
       const userIdsArray = user_ids.split(",");
@@ -57,19 +58,49 @@ export default SlackFunction(
         throw new Error(`At least ${numUsers} user IDs are required.`);
       }
 
-      // Randomly pick the specified number of users from the userIdsArray
+      // Select the specified number of users from the userIdsArray
       const selectedUserIds = userIdsArray
         .sort(() => 0.5 - Math.random())
         .slice(0, numUsers);
 
-      const conversationLines = response_text.split("\n").filter((line) =>
-        line.trim() !== ""
-      );
-      let userIndex = 0;
+      const conversationData = JSON.parse(response_text);
+      const { conversations } = conversationData;
 
-      for (const line of conversationLines) {
-        const userId = selectedUserIds[userIndex % selectedUserIds.length];
-        userIndex++;
+      // Ensure the app is a member of the channel
+      const channelInfo = await client.conversations.info({
+        channel: channel_id,
+      });
+      if (!channelInfo.ok) {
+        throw new Error(`Failed to fetch channel info: ${channelInfo.error}`);
+      }
+
+      if (!channelInfo.channel.is_member) {
+        // Try to join the channel
+        const joinChannelResponse = await client.conversations.join({
+          channel: channel_id,
+        });
+        if (!joinChannelResponse.ok) {
+          throw new Error(
+            `Failed to join channel: ${joinChannelResponse.error}`,
+          );
+        }
+      }
+
+      const allUserIds = [...new Set([...userIdsArray, ...selectedUserIds])];
+
+      for (const conversation of conversations) {
+        const { author, message, replies } = conversation;
+
+        console.log(`Author: ${author}`);
+        const userId = allUserIds.find(
+          (user) => user === author,
+        );
+
+        if (!userId) {
+          console.error(`User ID for author ${author} not found in allUserIds`);
+          console.log(`All User IDs: ${JSON.stringify(allUserIds)}`);
+          throw new Error(`User ID for author ${author} not found`);
+        }
 
         const userInfoResponse = await client.users.info({ user: userId });
         if (!userInfoResponse.ok) {
@@ -79,16 +110,12 @@ export default SlackFunction(
         }
 
         const userInfo = userInfoResponse.user;
-        if (!userInfo) {
-          throw new Error(`User info not found for user ID: ${userId}`);
-        }
-
         const { profile } = userInfo;
         const username = profile.real_name;
         const icon_url = profile.image_512;
 
         // Use variables within the template literal
-        const messageText = `${line}`;
+        const messageText = `${message}`;
 
         const postMessageResponse = await client.chat.postMessage({
           channel: channel_id,
@@ -101,6 +128,54 @@ export default SlackFunction(
           throw new Error(
             `Failed to post message, error: ${postMessageResponse.error}`,
           );
+        }
+
+        for (const reply of replies) {
+          const { author: replyAuthor, message: replyMessage } = reply;
+
+          const replyUserId = allUserIds.find(
+            (user) => user === replyAuthor,
+          );
+
+          if (!replyUserId) {
+            console.error(
+              `User ID for reply author ${replyAuthor} not found in allUserIds`,
+            );
+            console.log(`All User IDs: ${JSON.stringify(allUserIds)}`);
+            throw new Error(
+              `User ID for reply author ${replyAuthor} not found`,
+            );
+          }
+
+          const replyUserInfoResponse = await client.users.info({
+            user: replyUserId,
+          });
+          if (!replyUserInfoResponse.ok) {
+            throw new Error(
+              `Failed to fetch user info for user ID: ${replyUserId}, error: ${replyUserInfoResponse.error}`,
+            );
+          }
+
+          const replyUserInfo = replyUserInfoResponse.user;
+          const { profile: replyProfile } = replyUserInfo;
+          const replyUsername = replyProfile.real_name;
+          const replyIconUrl = replyProfile.image_512;
+
+          const replyText = `${replyMessage}`;
+
+          const postReplyResponse = await client.chat.postMessage({
+            channel: channel_id,
+            text: replyText,
+            username: replyUsername,
+            icon_url: replyIconUrl,
+            thread_ts: postMessageResponse.ts,
+          });
+
+          if (!postReplyResponse.ok) {
+            throw new Error(
+              `Failed to post reply, error: ${postReplyResponse.error}`,
+            );
+          }
         }
 
         // Wait a bit between messages to simulate a conversation

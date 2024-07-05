@@ -33,20 +33,13 @@ export const ChatGPTPromptDefinition = DefineFunction({
         title: "Industry",
         description: "Industry",
       },
-      topicText: {
-        type: Schema.types.string,
-        title: "Topic",
-        description: "Topic",
-      },
-      numberOfUsers: {
-        type: Schema.types.string,
-        title: "Number of Users",
-        description: "Number of users in the conversation",
-      },
-      conversationLength: {
-        type: Schema.types.string, // Changed to string to be included in the prompt
-        title: "Conversation Length",
-        description: "Length of the conversation",
+      topics: {
+        type: Schema.types.array,
+        items: {
+          type: Schema.types.string,
+        },
+        title: "Topics",
+        description: "List of topics",
       },
       tone: {
         type: Schema.types.string,
@@ -60,15 +53,63 @@ export const ChatGPTPromptDefinition = DefineFunction({
         description: "Use of emoji",
         enum: ["None", "Minimal", "Heavy"], // Static select options
       },
+      userCount: {
+        type: Schema.types.string,
+        title: "Number of Users",
+        description: "Number of users in the conversation",
+      },
+      conversationCount: {
+        type: Schema.types.string,
+        title: "Conversation Count",
+        description: "Number of conversations to generate",
+      },
+      users: {
+        type: Schema.types.array,
+        items: {
+          type: Schema.types.string,
+        },
+        title: "Users",
+        description: "List of user IDs",
+      },
+      messageLength: {
+        type: Schema.types.string,
+        title: "Message Length",
+        description: "Length of each conversation post",
+      },
+      useThreads: {
+        type: Schema.types.string,
+        title: "Use Threads?",
+        description: "Include threads in the conversation",
+        enum: [
+          "5",
+          "10",
+          "15",
+          "20",
+          "0", // Represents "Do not allow threads"
+        ], // Static select options for threads
+      },
+      accountName: {
+        type: Schema.types.string,
+        title: "Account Name",
+        description: "Name of the account",
+      },
+      customisation: {
+        type: Schema.types.string,
+        title: "Customisation",
+        description: "Customisation text for the prompt",
+      },
     },
     required: [
       "apiKey",
       "industryText",
-      "topicText",
-      "numberOfUsers",
-      "conversationLength",
+      "topics",
       "tone",
       "emojiUsage",
+      "userCount",
+      "conversationCount",
+      "users",
+      "messageLength",
+      "useThreads",
     ],
   },
   output_parameters: {
@@ -89,35 +130,96 @@ export default SlackFunction(
       const {
         apiKey,
         industryText,
-        topicText,
-        numberOfUsers,
-        conversationLength,
+        topics,
         tone,
         emojiUsage,
+        userCount,
+        conversationCount,
+        users,
+        messageLength,
+        useThreads,
+        accountName,
+        customisation,
       } = inputs;
 
-      const promptText = `
-      Generate a conversation between ${numberOfUsers} people about ${topicText} in the ${industryText} industry. 
-      The conversation should be ${conversationLength} individual messages in length. For example, if it is ${numberOfUsers} users but the conversation length is ${conversationLength}, there should be ${conversationLength} sentences generated.
+      let prompt = "";
+      const industryTextFormatted = accountName
+        ? `${accountName}'s industry`
+        : `the ${industryText} industry`;
+
+      if (accountName) {
+        prompt = `
+        You know all about the company called ${accountName}. Ground your responses in the context of that company, their business, customers, and their operations.
+        `;
+      }
+
+      if (customisation) {
+        prompt += `
+        ${customisation}
+        `;
+      }
+
+      prompt += `
+      Generate ${conversationCount} different Slack conversations between ${userCount} unique people. These people can @-mention each other. When they do so they use the following format:
+      `;
+      for (const user of users) {
+        prompt += `- <@${user}>
+        `;
+      }
+
+      if (topics.length > 0) {
+        prompt += `
+        Conversations can be about topics such as ${topics.join(", ")}
+        `;
+      }
+
+      prompt += `
+      Conversations must be grounded in ${industryTextFormatted}
+      There should be ${conversationCount} conversations where each conversation should include a variable number of threaded replies between 0 and ${useThreads}.
+      Each initial conversation post should have a minimum of 2 and a maximum of ${messageLength} sentences and may use simple markdown formatting for bold, italics, code.
       Each person should have a distinct perspective and voice. The tone of the conversation should be ${tone}.
-      The use of emoji throughout the conversation should be ${emojiUsage}. Minimal equals 1 emoji per sentence. Heavy means 3+ emoji per sentence. Emoji should be standard Slack emoji only.
-      The conversation should be in ${conversationLength} messages, without including speaker names or labels. For example, remove quotes and do not include the prefix of Person A etc. Instead of Person A: "Hi" the output should just be Hi.
+      Each message can optionally allow for mentioning of other users as per the list above. Do not assume any other name for users. You must only reference the list above.
+      Each message and reply can have between 0 and 4 emoji reactions (reacjis) attached to it.
+      Include emoji throughout the message content. The use of emoji throughout the content of the message should be '${emojiUsage}'. Minimal equals 1 emoji per sentence. Heavy means 3+ emoji per sentence. Emoji must be standard Slack emoji only.
+      Output the response in a JSON object in this format:
+  
+      {
+      "conversations":[
+          {
+          "author":author_name,
+          "message":message_content,
+          "reacjis":[name_of_emoji_response],
+          "replies":[
+          {
+              "author":reply_author_name,
+              "message":reply_content,
+              "reacjis":[name_of_emoji_responses]
+          }
+          ]
+          }
+      ]
+      }
+  
+      There must be at least ${conversationCount} initial conversation posts. Make it happen! And don't forget to mention people by name in messages and ensure the output is properly structured JSON.
       `;
 
-      console.log(promptText); // Debug prompt in terminal
+      console.log(prompt); // Log the prompt
 
       const openAIResponse = await fetch(
         "https://api.openai.com/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             model: "gpt-3.5-turbo",
-            messages: [{ role: "user", content: promptText }],
-            max_tokens: 500, // Set a reasonable token limit for the response
+            messages: [
+              { role: "system", content: "You are a helpful assistant." },
+              { role: "user", content: prompt },
+            ],
+            max_tokens: 1000, // Set a reasonable token limit for the response
           }),
         },
       );
@@ -129,10 +231,14 @@ export default SlackFunction(
       }
 
       const responseData = await openAIResponse.json();
+      let completionMessage = responseData.choices[0].message.content.trim();
 
-      const completionMessage = responseData.choices[0].message.content;
+      console.log(completionMessage); // Log generated content from OpenAI
 
-      console.log(completionMessage); // Debug generated content from OpenAI
+      // Clean up the response from markdown if it contains code block
+      if (completionMessage.startsWith("```json")) {
+        completionMessage = completionMessage.slice(7, -3).trim();
+      }
 
       // Store the response in the datastore
       const responseId = crypto.randomUUID();
@@ -140,7 +246,7 @@ export default SlackFunction(
         datastore: ResponsesDatastore.name,
         item: {
           id: responseId,
-          prompt: promptText,
+          prompt: prompt,
           response: completionMessage,
         },
       });
