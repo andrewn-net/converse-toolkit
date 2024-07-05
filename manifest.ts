@@ -27,6 +27,7 @@ export default Manifest({
     "chat:write.customize",
     "users:read",
     "channels:read",
+    "reactions:write",
     "datastore:read",
     "datastore:write",
   ],
