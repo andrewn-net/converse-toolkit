@@ -37,6 +37,8 @@ export const PostConversationDefinition = DefineFunction({
   },
 });
 
+// Default Slack emojis
+
 const validEmojis = [
   "grinning",
   "grimacing",
