@@ -2,6 +2,7 @@ import { Manifest } from "deno-slack-sdk/mod.ts";
 import { ChatGPTPromptDefinition } from "./functions/chatgpt_prompt.ts";
 import { ChannelMembersFunctionDefinition } from "./functions/get_users.ts";
 import { PostConversationDefinition } from "./functions/post_conversation.ts";
+import { RunRemoteFunctionDefinition } from "./functions/run_remote.ts";
 
 /**
  * The app manifest contains the app's configuration. This
@@ -17,6 +18,7 @@ export default Manifest({
     ChatGPTPromptDefinition,
     ChannelMembersFunctionDefinition,
     PostConversationDefinition,
+    RunRemoteFunctionDefinition,
   ],
   outgoingDomains: ["api.openai.com"],
   datastores: [],
