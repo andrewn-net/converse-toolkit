@@ -20,7 +20,10 @@ export default Manifest({
     PostConversationDefinition,
     RunRemoteFunctionDefinition,
   ],
-  outgoingDomains: ["api.openai.com"],
+  outgoingDomains: [
+    "api.openai.com",
+    "old-mate-dev-0e51eba2c681.herokuapp.com",
+  ],
   datastores: [],
   botScopes: [
     "commands",

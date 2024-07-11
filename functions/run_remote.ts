@@ -54,18 +54,21 @@ export default SlackFunction(
     console.log("let's do the conversation thing!");
     const remote_domain = env.OLD_MATE_URL;
     const url = `https://${remote_domain}/run`;
-    const body = new URLSearchParams();
-    body.append("remote_id", conversation_id.trim());
-    body.append("member_id", member.id);
+    // const body = new URLSearchParams();
+    // body.append("remote_id", conversation_id.trim());
+    // body.append("member_id", member.id);
     try {
       console.log("sending query to ", url);
-      console.log("payload body", body);
+      // console.log("payload body", body);
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "content-type": "application/x-www-form-urlencoded;charset=utf-8",
+          "content-type": "application/json",
         },
-        body,
+        body: JSON.stringify({
+          remote_id: conversation_id.trim(),
+          member_id: member.id,
+        }),
       });
       console.log("response", response);
       if (!response.ok) {
@@ -81,7 +84,7 @@ export default SlackFunction(
       };
     } catch (error) {
       // throw new Error("Failed to call Old Mate");
-      console.log("Failed to call Old Mate");
+      console.log("Failed to call Old Mate: ", error.message, error);
       return {
         outputs: {
           response: `Error: Failed to call Old Mate - ${error.message}`,
