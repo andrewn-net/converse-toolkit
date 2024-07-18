@@ -37,7 +37,7 @@ export const RunRemoteFunctionDefinition = DefineFunction({
 
 export default SlackFunction(
   RunRemoteFunctionDefinition,
-  async ({ inputs, client, env }) => {
+  async ({ inputs, client }) => {
     const { conversation_id, member } = inputs;
 
     const url = `https://old-mate-dev-0e51eba2c681.herokuapp.com/run`;
