@@ -5,17 +5,6 @@ import {
   SlackFunction,
 } from "deno-slack-sdk/mod.ts";
 
-// export const ConversationCustomType = DefineType({
-//   name: "Conversation",
-//   type: Schema.types.object,
-//   properties: {
-//     remote_id: {
-//       type: Schema.types.string,
-//     },
-//   },
-//   required: ["remote_id"],
-// });
-
 export const RunRemoteFunctionDefinition = DefineFunction({
   callback_id: "run_remote",
   title: "Run Remote Conversation",
@@ -51,15 +40,11 @@ export default SlackFunction(
   async ({ inputs, client, env }) => {
     const { conversation_id, member } = inputs;
 
-    console.log("let's do the conversation thing!");
-    const remote_domain = env.OLD_MATE_URL;
-    const url = `https://${remote_domain}/run`;
-    // const body = new URLSearchParams();
-    // body.append("remote_id", conversation_id.trim());
-    // body.append("member_id", member.id);
+    const url = `https://old-mate-dev-0e51eba2c681.herokuapp.com/run`;
+
+    console.log("Old mate URL:", url);
+
     try {
-      console.log("sending query to ", url);
-      // console.log("payload body", body);
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -70,7 +55,7 @@ export default SlackFunction(
           member_id: member.id,
         }),
       });
-      console.log("response", response);
+      console.log("Response:", response);
       if (!response.ok) {
         await client.chat.postMessage({
           channel: member.id,
