@@ -81,11 +81,11 @@ export const ChatGPTPromptDefinition = DefineFunction({
         title: "Use Threads?",
         description: "Include threads in the conversation",
         enum: [
-          "5",
-          "10",
-          "15",
-          "20",
-          "0", // Represents "Do not allow threads"
+          "Up to 5 replies",
+          "Up to 10 replies",
+          "Up to 15 replies",
+          "Up to 20 replies",
+          "Avoid threads", // Represents "Do not allow threads"
         ], // Static select options for threads
       },
       accountName: {
