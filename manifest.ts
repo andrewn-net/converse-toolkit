@@ -10,7 +10,7 @@ import { RunRemoteFunctionDefinition } from "./functions/run_remote.ts";
  * https://api.slack.com/automation/manifest
  */
 export default Manifest({
-  name: "Oldmate Toolkit",
+  name: "Old Mate Toolkit",
   description: "Workflow Steps to generate conversations using AI",
   icon: "assets/oldmate-icon.jpg",
   workflows: [],
