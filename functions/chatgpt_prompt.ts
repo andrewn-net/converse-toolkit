@@ -220,7 +220,7 @@ export default SlackFunction(
               { role: "user", content: prompt },
             ],
             max_tokens: 1000, // Set a reasonable token limit for the response
-            reponse_format: {
+            response_format: {
               type: "json_object",
             },
           }),
